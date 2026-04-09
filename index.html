@@ -188,7 +188,7 @@
   <div class="meta">
     <span>数据来源：one agent粗标数据-工作表2.csv</span>
     <span>生成时间：2026-04-09</span>
-    <span>总 Session 数：3,245</span>
+    <span>总 Session 数：8,996</span>
     <span>分类框架：两类正交维度（深度单任务 × 复合复杂）</span>
   </div>
 </div>
@@ -227,36 +227,36 @@
         <div class="kpi-label">深度单任务型</div>
         <div class="kpi-value">1,281</div>
         <div class="kpi-sub">平均 15.6 轮</div>
-        <div class="kpi-badge">39.5%</div>
+        <div class="kpi-badge">14.2%</div>
       </div>
       <div class="kpi-card comp">
         <div class="kpi-label">复合复杂型</div>
         <div class="kpi-value">262</div>
         <div class="kpi-sub">平均 9.5 轮</div>
-        <div class="kpi-badge">8.1%</div>
+        <div class="kpi-badge">2.9%</div>
       </div>
       <div class="kpi-card both">
         <div class="kpi-label">双重复杂型（both）</div>
         <div class="kpi-value">644</div>
         <div class="kpi-sub">平均 27.5 轮 ⬆️最长</div>
-        <div class="kpi-badge">19.8%</div>
+        <div class="kpi-badge">7.2%</div>
       </div>
       <div class="kpi-card zero">
         <div class="kpi-label">简单多轮（过滤）</div>
-        <div class="kpi-value">1,058</div>
+        <div class="kpi-value">6,809</div>
         <div class="kpi-sub">平均 6.0 轮</div>
-        <div class="kpi-badge" style="background:#F1F5F9;color:var(--muted);">32.6%</div>
+        <div class="kpi-badge" style="background:#F1F5F9;color:var(--muted);">75.7%</div>
       </div>
     </div>
 
     <!-- 整体分布条 -->
     <div class="chart-card" style="margin-bottom:24px;">
-      <div class="chart-title">全量 Session 高价值占比（67.4%）</div>
+      <div class="chart-title">全量 Session 高价值占比（24.3%）</div>
       <div class="stacked-bar">
-        <div class="bar-seg deep" style="flex:39.5">deep_single 39.5%</div>
-        <div class="bar-seg both" style="flex:19.8">both 19.8%</div>
-        <div class="bar-seg comp" style="flex:8.1">comp 8.1%</div>
-        <div class="bar-seg zero" style="flex:32.6">标0 32.6%</div>
+        <div class="bar-seg deep" style="flex:14.2">deep_single 14.2%</div>
+        <div class="bar-seg both" style="flex:7.2">both 7.2%</div>
+        <div class="bar-seg comp" style="flex:2.9">comp 2.9%</div>
+        <div class="bar-seg zero" style="flex:75.7">标0 75.7%</div>
       </div>
       <div class="bar-legend">
         <div class="legend-item"><div class="legend-dot" style="background:var(--deep)"></div>deep_single（深度单任务）</div>
@@ -281,7 +281,7 @@
 
   <!-- ③ 深度单任务型 -->
   <div class="section">
-    <div class="section-title">三、深度单任务型（deep_single） <span class="badge" style="background:var(--deep-light);color:var(--deep);">1,281 sessions</span></div>
+    <div class="section-title">三、深度单任务型（deep_single） <span class="badge" style="background:var(--deep-light);color:var(--deep);">1,281 sessions（14.2%）</span></div>
 
     <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">用户全程围绕同一目标，必须依赖多轮才能达成最终交付物。单轮无法直接触发，需通过<strong>信息积累</strong>或<strong>反复打磨</strong>逐步构建。</p>
 
@@ -361,7 +361,7 @@
 
   <!-- ④ 复合复杂型 -->
   <div class="section">
-    <div class="section-title">四、复合复杂型（compound_complex） <span class="badge" style="background:var(--comp-light);color:#B45309;">262 sessions</span></div>
+    <div class="section-title">四、复合复杂型（compound_complex） <span class="badge" style="background:var(--comp-light);color:#B45309;">262 sessions（2.9%）</span></div>
 
     <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">意图在对话中发生有逻辑链条的升级或跳转。前期获取的信息/结果成为后期新意图的输入，最终达成的目标比任何单轮都更复杂。</p>
 
@@ -446,7 +446,7 @@
 
   <!-- ⑤ 双重复杂型 -->
   <div class="section">
-    <div class="section-title">五、双重复杂型（both） <span class="badge" style="background:var(--both-light);color:var(--both);">644 sessions · 平均 27.5 轮 🏆最长</span></div>
+    <div class="section-title">五、双重复杂型（both） <span class="badge" style="background:var(--both-light);color:var(--both);">644 sessions（7.2%） · 平均 27.5 轮 🏆最长</span></div>
 
     <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">同时具备深度单任务型和复合复杂型的特征：前段意图升级/跳转，后段对新目标进行深度打磨。<strong>是三类中潜在价值最高的 session。</strong></p>
 
@@ -536,9 +536,9 @@
 
     <div class="insights">
       <div class="insight-card">
-        <div class="insight-num">67.4%</div>
+        <div class="insight-num">24.3%</div>
         <div class="insight-title">Session 具有高价值复杂性</div>
-        <div class="insight-text">新框架过滤掉了 32.6% 的简单多轮，留下真正需要多轮才能满足的 2,187 个 session，避免了旧框架"全量标复杂"的失真。</div>
+        <div class="insight-text">新框架过滤掉了 75.7% 的简单多轮，留下真正需要多轮才能满足的 2,187 个 session，避免了旧框架"全量标复杂"的失真。</div>
       </div>
       <div class="insight-card">
         <div class="insight-num">94.8%</div>
@@ -599,7 +599,7 @@
 </div>
 
 <div class="footer">
-  数据量：3,245 个 session（3,257 行）&nbsp;&nbsp;|&nbsp;&nbsp;报告生成时间：2026-04-09
+  数据量：8,996 个 session&nbsp;&nbsp;|&nbsp;&nbsp;报告生成时间：2026-04-09
 </div>
 
 <script>
