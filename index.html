@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多轮复杂意图重新分类分析报告</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --deep:    #4F6EF7;
+    --comp:    #F5A623;
+    --both:    #7C3AED;
+    --zero:    #CBD5E1;
+    --bg:      #F8FAFC;
+    --card:    #FFFFFF;
+    --text:    #1E293B;
+    --muted:   #64748B;
+    --border:  #E2E8F0;
+    --deep-light: #EEF2FF;
+    --comp-light: #FFF7ED;
+    --both-light: #F5F3FF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+
+  /* ── Header ── */
+  .header { background: linear-gradient(135deg, #1E293B 0%, #334155 100%); color: #fff; padding: 48px 40px 40px; }
+  .header h1 { font-size: 26px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.3px; }
+  .header .meta { font-size: 13px; color: #94A3B8; display: flex; gap: 24px; flex-wrap: wrap; }
+  .header .meta span::before { content: "· "; }
+
+  /* ── Layout ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 36px 24px 80px; }
+
+  /* ── Section ── */
+  .section { margin-bottom: 48px; }
+  .section-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .section-title .badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: #E2E8F0; color: var(--muted); }
+
+  /* ── KPI Cards ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  @media (max-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+  .kpi-card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .kpi-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 12px 12px 0 0; }
+  .kpi-card.deep::before  { background: var(--deep); }
+  .kpi-card.comp::before  { background: var(--comp); }
+  .kpi-card.both::before  { background: var(--both); }
+  .kpi-card.zero::before  { background: var(--zero); }
+  .kpi-label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .kpi-value { font-size: 32px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+  .kpi-card.deep .kpi-value { color: var(--deep); }
+  .kpi-card.comp .kpi-value { color: var(--comp); }
+  .kpi-card.both .kpi-value { color: var(--both); }
+  .kpi-card.zero .kpi-value { color: var(--muted); }
+  .kpi-sub { font-size: 12px; color: var(--muted); }
+  .kpi-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-top: 6px; }
+  .kpi-card.deep .kpi-badge { background: var(--deep-light); color: var(--deep); }
+  .kpi-card.comp .kpi-badge { background: var(--comp-light); color: #B45309; }
+  .kpi-card.both .kpi-badge { background: var(--both-light); color: var(--both); }
+
+  /* ── Charts Row ── */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+  @media (max-width: 768px) { .charts-row { grid-template-columns: 1fr; } }
+  .chart-card { background: var(--card); border-radius: 12px; padding: 24px; border: 1px solid var(--border); }
+  .chart-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* ── Framework Matrix ── */
+  .matrix { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 2px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 24px; }
+  .mat-cell { padding: 16px 18px; font-size: 13px; display: flex; align-items: center; }
+  .mat-header { background: #1E293B; color: #fff; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .mat-dim  { background: #F1F5F9; font-weight: 600; color: var(--muted); font-size: 12px; }
+  .mat-no   { background: #FEF2F2; color: #B91C1C; }
+  .mat-yes-ds { background: var(--deep-light); color: #1D4ED8; font-weight: 700; }
+  .mat-yes-cc { background: var(--comp-light); color: #92400E; font-weight: 700; }
+  .mat-icon { font-size: 16px; margin-right: 6px; }
+
+  /* ── Type Detail Cards ── */
+  .type-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 32px; }
+  @media (max-width: 900px) { .type-cards { grid-template-columns: 1fr; } }
+  .type-card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+  .type-card-header { padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+  .type-card.deep .type-card-header { background: var(--deep-light); }
+  .type-card.comp .type-card-header { background: var(--comp-light); }
+  .type-card.both .type-card-header { background: var(--both-light); }
+  .type-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .deep .type-dot { background: var(--deep); }
+  .comp .type-dot { background: var(--comp); }
+  .both .type-dot { background: var(--both); }
+  .type-card-name { font-size: 13px; font-weight: 700; }
+  .type-card.deep .type-card-name { color: var(--deep); }
+  .type-card.comp .type-card-name { color: #B45309; }
+  .type-card.both .type-card-name { color: var(--both); }
+  .type-card-body { padding: 16px 20px; }
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: var(--muted); }
+  .stat-value { font-weight: 700; }
+
+  /* ── Stacked bar ── */
+  .stacked-bar { display: flex; height: 32px; border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+  .bar-seg { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; transition: flex 0.6s ease; }
+  .bar-seg.deep { background: var(--deep); }
+  .bar-seg.both { background: var(--both); }
+  .bar-seg.comp { background: var(--comp); }
+  .bar-seg.zero { background: var(--zero); color: #64748B; }
+  .bar-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Turn dist ── */
+  .turn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+  @media (max-width: 600px) { .turn-grid { grid-template-columns: repeat(2, 1fr); } }
+  .turn-card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 14px; text-align: center; }
+  .turn-seg { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+  .turn-bars { display: flex; flex-direction: column; gap: 4px; }
+  .turn-bar-row { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+  .turn-bar-row .lbl { width: 22px; color: var(--muted); font-size: 10px; text-align: right; }
+  .turn-bar-bg { flex: 1; background: #F1F5F9; border-radius: 3px; height: 8px; overflow: hidden; }
+  .turn-bar-fill { height: 100%; border-radius: 3px; }
+  .turn-pct { width: 28px; text-align: right; color: var(--text); font-weight: 600; }
+
+  /* ── Sub-type bars ── */
+  .subtype-list { display: flex; flex-direction: column; gap: 10px; }
+  .subtype-item { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .subtype-name { width: 140px; flex-shrink: 0; color: var(--text); }
+  .subtype-bar-bg { flex: 1; background: #F1F5F9; border-radius: 4px; height: 10px; overflow: hidden; }
+  .subtype-bar-fill { height: 100%; border-radius: 4px; }
+  .deep  .subtype-bar-fill { background: var(--deep); }
+  .comp  .subtype-bar-fill { background: var(--comp); }
+  .both  .subtype-bar-fill { background: var(--both); }
+  .subtype-pct { width: 40px; text-align: right; color: var(--muted); font-size: 12px; font-weight: 600; }
+
+  /* ── Deliverable chart wrap ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── Cases ── */
+  .cases { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 768px) { .cases { grid-template-columns: 1fr; } }
+  .case-card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 16px; position: relative; }
+  .case-card::before { content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 3px; border-radius: 10px 0 0 10px; }
+  .case-card.deep::before { background: var(--deep); }
+  .case-card.comp::before { background: var(--comp); }
+  .case-card.both::before { background: var(--both); }
+  .case-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .case-num { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .case-card.deep .case-num { background: var(--deep-light); color: var(--deep); }
+  .case-card.comp .case-num { background: var(--comp-light); color: #B45309; }
+  .case-card.both .case-num { background: var(--both-light); color: var(--both); }
+  .case-turns { font-size: 12px; color: var(--muted); }
+  .case-reason { font-size: 11px; color: #64748B; background: #F8FAFC; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); }
+  .case-row { font-size: 12px; line-height: 1.5; margin-bottom: 6px; display: flex; gap: 6px; }
+  .case-row-label { color: var(--muted); font-weight: 600; flex-shrink: 0; width: 44px; }
+  .case-row-text { color: var(--text); }
+
+  /* ── Insights ── */
+  .insights { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 768px) { .insights { grid-template-columns: 1fr; } }
+  .insight-card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 18px; }
+  .insight-num { font-size: 28px; font-weight: 800; color: var(--deep); margin-bottom: 4px; }
+  .insight-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .insight-text { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  /* ── Suggestions ── */
+  .suggest-list { display: flex; flex-direction: column; gap: 12px; }
+  .suggest-item { display: flex; gap: 14px; background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 16px; }
+  .suggest-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .suggest-body {}
+  .suggest-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .suggest-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 4px; margin-right: 4px; }
+  .tag.deep { background: var(--deep-light); color: var(--deep); }
+  .tag.comp { background: var(--comp-light); color: #B45309; }
+  .tag.both { background: var(--both-light); color: var(--both); }
+
+  /* ── Footer ── */
+  .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 24px; border-top: 1px solid var(--border); }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); margin: 32px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔍 多轮复杂意图重新分类分析报告</h1>
+  <div class="meta">
+    <span>数据来源：one agent粗标数据-工作表2.csv</span>
+    <span>生成时间：2026-04-09</span>
+    <span>总 Session 数：3,245</span>
+    <span>分类框架：两类正交维度（深度单任务 × 复合复杂）</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ① 框架说明 -->
+  <div class="section">
+    <div class="section-title">一、新分类框架 <span class="badge">Framework</span></div>
+
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">旧三类（多轮协作/意图迁移/渐进细化）并非互斥维度，导致大量 session 同时归属多类。新框架从<strong>两个正交维度</strong>出发，生成四象限，保留有价值的两类。</p>
+
+    <div class="matrix">
+      <div class="mat-cell mat-header" style="justify-content:center;">维度</div>
+      <div class="mat-cell mat-header" style="justify-content:center;">单一意图</div>
+      <div class="mat-cell mat-header" style="justify-content:center;">意图演化</div>
+
+      <div class="mat-cell mat-dim">首轮已明确</div>
+      <div class="mat-cell mat-no"><span class="mat-icon">❌</span> 简单多轮（无价值）</div>
+      <div class="mat-cell mat-no"><span class="mat-icon">❌</span> 意图漫游（无积累）</div>
+
+      <div class="mat-cell mat-dim">多轮才成型</div>
+      <div class="mat-cell mat-yes-ds"><span class="mat-icon">✅</span> <strong>深度单任务型</strong><br><span style="font-weight:400;font-size:11px;">信息积累 or 反复打磨</span></div>
+      <div class="mat-cell mat-yes-cc"><span class="mat-icon">✅</span> <strong>复合复杂型</strong><br><span style="font-weight:400;font-size:11px;">意图升级 / 多任务链</span></div>
+    </div>
+
+    <p style="font-size:12px;color:var(--muted);margin-top:8px;">💡 <strong>both</strong>（双重复杂型）= 同时满足两个维度，是价值密度最高的 session。</p>
+  </div>
+
+  <!-- ② 数据概览 -->
+  <div class="section">
+    <div class="section-title">二、数据概览 <span class="badge">Overview</span></div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card deep">
+        <div class="kpi-label">深度单任务型</div>
+        <div class="kpi-value">1,281</div>
+        <div class="kpi-sub">平均 15.6 轮</div>
+        <div class="kpi-badge">39.5%</div>
+      </div>
+      <div class="kpi-card comp">
+        <div class="kpi-label">复合复杂型</div>
+        <div class="kpi-value">262</div>
+        <div class="kpi-sub">平均 9.5 轮</div>
+        <div class="kpi-badge">8.1%</div>
+      </div>
+      <div class="kpi-card both">
+        <div class="kpi-label">双重复杂型（both）</div>
+        <div class="kpi-value">644</div>
+        <div class="kpi-sub">平均 27.5 轮 ⬆️最长</div>
+        <div class="kpi-badge">19.8%</div>
+      </div>
+      <div class="kpi-card zero">
+        <div class="kpi-label">简单多轮（过滤）</div>
+        <div class="kpi-value">1,058</div>
+        <div class="kpi-sub">平均 6.0 轮</div>
+        <div class="kpi-badge" style="background:#F1F5F9;color:var(--muted);">32.6%</div>
+      </div>
+    </div>
+
+    <!-- 整体分布条 -->
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">全量 Session 高价值占比（67.4%）</div>
+      <div class="stacked-bar">
+        <div class="bar-seg deep" style="flex:39.5">deep_single 39.5%</div>
+        <div class="bar-seg both" style="flex:19.8">both 19.8%</div>
+        <div class="bar-seg comp" style="flex:8.1">comp 8.1%</div>
+        <div class="bar-seg zero" style="flex:32.6">标0 32.6%</div>
+      </div>
+      <div class="bar-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--deep)"></div>deep_single（深度单任务）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--both)"></div>both（双重复杂）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--comp)"></div>compound_complex（复合）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--zero)"></div>标0（简单多轮）</div>
+      </div>
+    </div>
+
+    <!-- 图表 -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">各类 Session 数量对比</div>
+        <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">轮次分布对比（各类内部占比）</div>
+        <div class="chart-wrap"><canvas id="chartTurn"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 深度单任务型 -->
+  <div class="section">
+    <div class="section-title">三、深度单任务型（deep_single） <span class="badge" style="background:var(--deep-light);color:var(--deep);">1,281 sessions</span></div>
+
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">用户全程围绕同一目标，必须依赖多轮才能达成最终交付物。单轮无法直接触发，需通过<strong>信息积累</strong>或<strong>反复打磨</strong>逐步构建。</p>
+
+    <div class="two-col">
+      <div class="chart-card">
+        <div class="chart-title">子类型分布</div>
+        <div class="subtype-list deep" style="margin-top:8px;">
+          <div class="subtype-item">
+            <div class="subtype-name">反复迭代打磨</div>
+            <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:94.8%"></div></div>
+            <div class="subtype-pct">94.8%</div>
+          </div>
+          <div class="subtype-item">
+            <div class="subtype-name">多轮信息积累</div>
+            <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:13.1%"></div></div>
+            <div class="subtype-pct">13.1%</div>
+          </div>
+        </div>
+        <div style="margin-top:20px;padding:12px;background:var(--deep-light);border-radius:8px;font-size:12px;color:#1D4ED8;line-height:1.6;">
+          💡 <strong>反复打磨</strong>占绝对主导（94.8%），用户核心诉求是：AI 能记住我上一轮改了什么，不要让我重复说。
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">交付物类型 TOP 6</div>
+        <div class="chart-wrap"><canvas id="chartDeepDeliv"></canvas></div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--muted);">📋 典型案例</div>
+      <div class="cases">
+        <div class="case-card deep">
+          <div class="case-header">
+            <span class="case-num">案例 1</span>
+            <span class="case-turns">286 轮</span>
+            <span class="case-reason">反复迭代打磨</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">女主站在草丛里高举双手的图片</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">女主站在迪吧里，一手夹烟，一手高举手拿着丁字裤...</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">女主动起来，扭动身体，转过身，扭动肥臀跳舞</span></div>
+        </div>
+        <div class="case-card deep">
+          <div class="case-header">
+            <span class="case-num">案例 2</span>
+            <span class="case-turns">197 轮</span>
+            <span class="case-reason">多轮信息积累+反复迭代打磨</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">增加一丝丝油画写实风格，画风厚重，完全模拟三国志14立绘画风</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">人物面部油画感稍微加重一丝丝</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">背景纯白色，增加画面厚重感</span></div>
+        </div>
+        <div class="case-card deep">
+          <div class="case-header">
+            <span class="case-num">案例 3</span>
+            <span class="case-turns">66 轮</span>
+            <span class="case-reason">反复迭代打磨</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">元宝你好！经过反复求证，文本比对，我还是要回到原理的选题，即：狂欢诗学视域下湘西口承对儒释道智慧转译研究</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">你做了哪些修改？另外现在的概念界定不是狂欢诗学了，而是狂欢化转译...</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">不能乱省略，明确规定五项成果，你硬生生将我的成果砍掉</span></div>
+        </div>
+        <div class="case-card deep">
+          <div class="case-header">
+            <span class="case-num">案例 4</span>
+            <span class="case-turns">34 轮</span>
+            <span class="case-reason">多轮信息积累</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">可以帮我根据保日期，宝宝喝奶的时间，喝奶的量，以及今天有没有换尿布，帮我做一个喂养表格吗？</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">帮我记录一下，刚刚6:30左右，宝宝喝了40毫升的配方奶，换了一次尿布，有小便，大便没有</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">请帮我记录一下刚刚9:30左右的样子，宝宝喝了接近60毫升的配方奶，然后换了尿布，只有小便</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ④ 复合复杂型 -->
+  <div class="section">
+    <div class="section-title">四、复合复杂型（compound_complex） <span class="badge" style="background:var(--comp-light);color:#B45309;">262 sessions</span></div>
+
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">意图在对话中发生有逻辑链条的升级或跳转。前期获取的信息/结果成为后期新意图的输入，最终达成的目标比任何单轮都更复杂。</p>
+
+    <div class="two-col">
+      <div class="chart-card">
+        <div class="chart-title">子类型分布</div>
+        <div class="subtype-list comp" style="margin-top:8px;">
+          <div class="subtype-item">
+            <div class="subtype-name">多任务链</div>
+            <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:73.3%"></div></div>
+            <div class="subtype-pct">73.3%</div>
+          </div>
+          <div class="subtype-item">
+            <div class="subtype-name">意图升级</div>
+            <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:27.1%"></div></div>
+            <div class="subtype-pct">27.1%</div>
+          </div>
+          <div class="subtype-item">
+            <div class="subtype-name">意图跳转</div>
+            <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:13.7%"></div></div>
+            <div class="subtype-pct">13.7%</div>
+          </div>
+        </div>
+        <div style="margin-top:20px;padding:12px;background:var(--comp-light);border-radius:8px;font-size:12px;color:#92400E;line-height:1.6;">
+          💡 <strong>多任务链</strong>是最主要路径（73.3%），用户在一个 session 内跨域完成多个关联任务（PPT+Word+Excel、计划书+财务模型），是单轮分流完全无法覆盖的场景。
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">交付物类型 TOP 6</div>
+        <div class="chart-wrap"><canvas id="chartCompDeliv"></canvas></div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--muted);">📋 典型案例</div>
+      <div class="cases">
+        <div class="case-card comp">
+          <div class="case-header">
+            <span class="case-num">案例 1</span>
+            <span class="case-turns">44 轮</span>
+            <span class="case-reason">意图跳转+意图升级</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">豆包，我想每天学习5个新能源知识，你每天早上可以给我制定相应的计划吗？</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">就周中的下午，我看一下时间，就是3点左右吧</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">元宝，你这个给我推送的任务，我都打不开那个网址</span></div>
+        </div>
+        <div class="case-card comp">
+          <div class="case-header">
+            <span class="case-num">案例 2</span>
+            <span class="case-turns">40 轮</span>
+            <span class="case-reason">多任务链</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">你好，需要将表格中的货物运输到云南省文山市，请帮我整理一个经济的运输方案</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">金山地区的货物是否可以合并装货，减少费用</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">不要再乱弄了</span></div>
+        </div>
+        <div class="case-card comp">
+          <div class="case-header">
+            <span class="case-num">案例 3</span>
+            <span class="case-turns">39 轮</span>
+            <span class="case-reason">意图升级+多任务链</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">这是工作簿，包含两个表格，一个是班表，一个是统计表，我现在要在统计表中自动化打√</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">使用在线转换服务</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">好的，发给我</span></div>
+        </div>
+        <div class="case-card comp">
+          <div class="case-header">
+            <span class="case-num">案例 4</span>
+            <span class="case-turns">15 轮</span>
+            <span class="case-reason">意图升级跳转+多任务链</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">你和workbuddy有啥区别</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">我的电脑上面，workbuddy运行出错，用不了，你能解决吗</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">你会做商业计划书吗 → 帮我做完整计划书</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ⑤ 双重复杂型 -->
+  <div class="section">
+    <div class="section-title">五、双重复杂型（both） <span class="badge" style="background:var(--both-light);color:var(--both);">644 sessions · 平均 27.5 轮 🏆最长</span></div>
+
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">同时具备深度单任务型和复合复杂型的特征：前段意图升级/跳转，后段对新目标进行深度打磨。<strong>是三类中潜在价值最高的 session。</strong></p>
+
+    <div class="chart-card" style="margin-bottom:20px;">
+      <div class="chart-title">原因标签分布（可叠加）</div>
+      <div class="subtype-list both" style="margin-top:8px;">
+        <div class="subtype-item">
+          <div class="subtype-name">反复打磨</div>
+          <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:97.8%"></div></div>
+          <div class="subtype-pct">98.0%</div>
+        </div>
+        <div class="subtype-item">
+          <div class="subtype-name">多任务链</div>
+          <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:68.9%"></div></div>
+          <div class="subtype-pct">68.9%</div>
+        </div>
+        <div class="subtype-item">
+          <div class="subtype-name">意图升级</div>
+          <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:37.9%"></div></div>
+          <div class="subtype-pct">37.9%</div>
+        </div>
+        <div class="subtype-item">
+          <div class="subtype-name">意图跳转</div>
+          <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:23.0%"></div></div>
+          <div class="subtype-pct">23.0%</div>
+        </div>
+        <div class="subtype-item">
+          <div class="subtype-name">多轮积累</div>
+          <div class="subtype-bar-bg"><div class="subtype-bar-fill" style="width:17.1%"></div></div>
+          <div class="subtype-pct">17.1%</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:0;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--muted);">📋 典型案例</div>
+      <div class="cases">
+        <div class="case-card both">
+          <div class="case-header">
+            <span class="case-num">案例 1</span>
+            <span class="case-turns">334 轮</span>
+            <span class="case-reason">多轮积累+反复打磨+意图跳转</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">写一首无我的五言绝</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">法性皆无我，空明万象尘。回光唯自照，落寂入无生。这首有错误吗？可以定稿吗？</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">呈现万象（诸相非相，非相哪来痕，虚痕易逝如幻），我这样写可以吗？写对了吗？</span></div>
+        </div>
+        <div class="case-card both">
+          <div class="case-header">
+            <span class="case-num">案例 2</span>
+            <span class="case-turns">221 轮</span>
+            <span class="case-reason">多轮积累+反复打磨+意图跳转+意图升级</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">未来高发展的行业</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">你不要理6083先 基于目前所有方法+公式先解决6082</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">这是历史数据 你要的更多参考数据</span></div>
+        </div>
+        <div class="case-card both">
+          <div class="case-header">
+            <span class="case-num">案例 3</span>
+            <span class="case-turns">174 轮</span>
+            <span class="case-reason">多轮积累+反复打磨+意图跳转+意图升级+多任务链</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">元宝，元宝，接着说你那个老张的趴厕所幸福生活</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">就好像给你一堆选项ABCD，实际上你不论选择哪个，你依然是在这个套子里没有逃出去的</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text">天色黑了 人的比例和车的比例调整协调</span></div>
+        </div>
+        <div class="case-card both">
+          <div class="case-header">
+            <span class="case-num">案例 4</span>
+            <span class="case-turns">67 轮</span>
+            <span class="case-reason">反复打磨+多任务链</span>
+          </div>
+          <div class="case-row"><span class="case-row-label">首轮</span><span class="case-row-text">你是python程序员和建模师，我要给你派任务</span></div>
+          <div class="case-row"><span class="case-row-label">中间</span><span class="case-row-text">增加表情数量和丰富表情动作且表情为动态效果，同时角色都有对应的音效，角色最好创新到50个并且增加建筑和法术</span></div>
+          <div class="case-row"><span class="case-row-label">末轮</span><span class="case-row-text"># 导入必要的库（会自动检测并安装缺失库）</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ⑥ 洞察 -->
+  <div class="section">
+    <div class="section-title">六、核心洞察与产品建议 <span class="badge">Insights</span></div>
+
+    <div class="insights">
+      <div class="insight-card">
+        <div class="insight-num">67.4%</div>
+        <div class="insight-title">Session 具有高价值复杂性</div>
+        <div class="insight-text">新框架过滤掉了 32.6% 的简单多轮，留下真正需要多轮才能满足的 2,187 个 session，避免了旧框架"全量标复杂"的失真。</div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-num">94.8%</div>
+        <div class="insight-title">deep_single 中「反复打磨」占绝对主导</div>
+        <div class="insight-text">图片调参、写作迭代是最典型场景。用户核心诉求：AI 能记住我上一轮改了什么，不要让我重复说。</div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-num">27.5轮</div>
+        <div class="insight-title">both 平均轮次最长，价值密度最高</div>
+        <div class="insight-text">先意图升级（探索→决策→执行），再深度打磨（反复迭代结果），单次对话完成最复杂任务，是被最低估的类型。</div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-num">73.3%</div>
+        <div class="insight-title">复合复杂型由「多任务链」驱动</div>
+        <div class="insight-text">用户在一个 session 内跨域完成多个关联任务（计划书+PPT+Excel），是现有单轮分流完全无法覆盖的盲区。</div>
+      </div>
+    </div>
+
+    <div class="suggest-list">
+      <div class="suggest-item">
+        <div class="suggest-icon">🧠</div>
+        <div class="suggest-body">
+          <div class="suggest-title"><span class="tag deep">deep_single</span> 增量修改记忆</div>
+          <div class="suggest-desc">每轮自动记录「用户改了什么」，下一轮无需重复描述上下文。覆盖 94.8% 的反复打磨场景，是优先级最高的体验优化点。</div>
+        </div>
+      </div>
+      <div class="suggest-item">
+        <div class="suggest-icon">📊</div>
+        <div class="suggest-body">
+          <div class="suggest-title"><span class="tag both">both</span> 任务进度追踪</div>
+          <div class="suggest-desc">对意图升级后的任务提供阶段感知，让用户知道「现在在第几步」，减少长对话中的迷失感。</div>
+        </div>
+      </div>
+      <div class="suggest-item">
+        <div class="suggest-icon">🔗</div>
+        <div class="suggest-body">
+          <div class="suggest-title"><span class="tag comp">compound</span> 子任务拆解视图</div>
+          <div class="suggest-desc">支持一个 session 内管理多个关联交付物，允许分别独立迭代。解决多任务链用户反复切换上下文的痛点。</div>
+        </div>
+      </div>
+      <div class="suggest-item">
+        <div class="suggest-icon">🖼️</div>
+        <div class="suggest-body">
+          <div class="suggest-title"><span class="tag deep">deep_single</span> 图片版本对比</div>
+          <div class="suggest-desc">图片是 deep_single 第一大交付物（33.3%）。支持多版本横向对比，解决「记不住第几版最好」的高频痛点。</div>
+        </div>
+      </div>
+      <div class="suggest-item">
+        <div class="suggest-icon">💡</div>
+        <div class="suggest-body">
+          <div class="suggest-title"><span class="tag comp">compound</span><span class="tag both">both</span> 主动推荐下一步</div>
+          <div class="suggest-desc">意图升级多从「能力探索」开始。当用户完成信息收集轮次后，AI 主动建议「是否要基于此生成 XXX？」，引导用户进入更深的任务执行。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  数据量：3,245 个 session（3,257 行）&nbsp;&nbsp;|&nbsp;&nbsp;报告生成时间：2026-04-09
+</div>
+
+<script>
+// ── 颜色 ──
+const C = { deep:'#4F6EF7', comp:'#F5A623', both:'#7C3AED', zero:'#CBD5E1' };
+
+// ── Bar Chart：各类数量 ──
+new Chart(document.getElementById('chartBar'), {
+  type: 'bar',
+  data: {
+    labels: ['deep_single', 'both', 'compound_complex', '标0（过滤）'],
+    datasets: [{
+      data: [1281, 644, 262, 1058],
+      backgroundColor: [C.deep, C.both, C.comp, C.zero],
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// ── Stacked Bar：轮次分布 ──
+new Chart(document.getElementById('chartTurn'), {
+  type: 'bar',
+  data: {
+    labels: ['deep_single', 'compound', 'both', '标0'],
+    datasets: [
+      { label: '1-3轮',  data: [8, 25, 3, 43],  backgroundColor: '#E2E8F0', borderRadius: 0 },
+      { label: '4-7轮',  data: [32, 32, 13, 36], backgroundColor: '#94A3B8', borderRadius: 0 },
+      { label: '8-15轮', data: [32, 27, 29, 15], backgroundColor: '#4F6EF7', borderRadius: 0 },
+      { label: '16轮+',  data: [27, 16, 55, 6],  backgroundColor: '#7C3AED', borderRadius: 0 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } }
+    },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { stacked: true, max: 100, grid: { color: '#F1F5F9' }, ticks: { font: { size: 11 }, callback: v => v+'%' } }
+    }
+  }
+});
+
+// ── Horizontal Bar：deep_single 交付物 ──
+new Chart(document.getElementById('chartDeepDeliv'), {
+  type: 'bar',
+  data: {
+    labels: ['图片（生成/编辑）','其他','表格/数据','代码/脚本','长文字内容','Logo/设计稿'],
+    datasets: [{ data: [33.3, 20.5, 20.4, 18.0, 15.1, 11.0], backgroundColor: C.deep, borderRadius: 4, borderSkipped: false }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 }, callback: v => v+'%' } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// ── Horizontal Bar：compound_complex 交付物 ──
+new Chart(document.getElementById('chartCompDeliv'), {
+  type: 'bar',
+  data: {
+    labels: ['表格/数据文件','结构化文档','代码/脚本','方案/规划','Logo/设计稿','图片（生成/编辑）'],
+    datasets: [{ data: [54.2, 41.2, 34.7, 18.3, 13.4, 11.5], backgroundColor: C.comp, borderRadius: 4, borderSkipped: false }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 }, callback: v => v+'%' } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+</script>
+</body>
+</html>
