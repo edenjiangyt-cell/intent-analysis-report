@@ -33,45 +33,54 @@ body { font-family: -apple-system, "PingFang SC", sans-serif; background: #F5F5F
 .note-badge { font-size:12px; color:#555; background:#F5F5F5; padding:3px 10px; border-radius:20px; }
 
 .tbl-wrap { background:#fff; border-radius:12px; border:1px solid #E5E5E5; overflow:hidden; max-width:900px; }
-.tbl-head { padding:11px 16px; background:#FAFAFA; border-bottom:1px solid #E5E5E5; display:flex; justify-content:space-between; align-items:center; }
+.tbl-head { padding:10px 16px; background:#FAFAFA; border-bottom:1px solid #E5E5E5; display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .tbl-head-title { font-size:13px; font-weight:600; color:#333; }
+.tbl-head-right { display:flex; align-items:center; gap:8px; }
 .tbl-head-meta { font-size:11px; color:#888; }
+
+/* 截图按钮 — 放在卡片头部 */
+.shot-btn { display:inline-flex; align-items:center; gap:4px; padding:5px 12px; background:#1a1a1a; color:#fff; border:none; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:opacity .15s; white-space:nowrap; }
+.shot-btn:hover { opacity:0.8; }
+.shot-btn.done { background:#388E3C; }
 
 table { width:100%; border-collapse:collapse; }
 thead th { padding:9px 14px; text-align:left; font-size:11px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:0.5px; background:#FAFAFA; border-bottom:2px solid #E5E5E5; border-right:1px solid #E5E5E5; }
 thead th:last-child { border-right:none; }
-tbody tr { border-bottom:1px solid #E5E5E5; cursor:pointer; }
+tbody tr { border-bottom:1px solid #E5E5E5; cursor:pointer; transition:background .1s; }
 tbody tr:last-child { border-bottom:none; }
 td { padding:10px 14px; font-size:13px; color:#BBBBBB; line-height:1.6; vertical-align:top; white-space:pre-wrap; word-break:break-word; border-right:1px solid #E5E5E5; }
 td:last-child { border-right:none; }
 td:first-child { width:36px; text-align:center; font-size:11px; font-weight:700; color:#CCC; }
 
-/* 末轮高亮（蓝色） */
+/* 末轮：蓝色 */
 tbody tr.last-row td { color:#1a1a1a; background:#EFF6FF; }
 tbody tr.last-row td:first-child { color:#007AFF; background:#DBEAFE; }
 
-/* 手动点击高亮（黄色） */
+/* 手动高亮：黄色 */
 tbody tr.hl-row td { color:#1a1a1a !important; background:#FFFBEB !important; }
 tbody tr.hl-row td:first-child { color:#B45309 !important; background:#FEF3C7 !important; }
 
 /* 折叠行 */
-tr.fold-row td { text-align:center; color:#CCC; font-size:11px; background:#FAFAFA; padding:6px; cursor:default; }
+tr.fold-row { cursor:default !important; }
+tr.fold-row td { text-align:center; color:#CCC; font-size:11px; background:#FAFAFA; padding:6px; }
 
-/* 按钮行 */
-.btn-row { display:flex; gap:8px; margin-top:12px; max-width:900px; }
-.action-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:opacity .15s; }
-.action-btn:hover { opacity:0.8; }
-.action-btn:disabled { opacity:0.45; cursor:not-allowed; }
-.btn-shot { background:#1a1a1a; color:#fff; }
-.btn-shot.done { background:#388E3C; }
-.btn-hint { background:#F0F0F0; color:#666; font-size:11px; padding:7px 12px; }
+.tip { margin-top:8px; font-size:11px; color:#aaa; max-width:900px; }
+
+/* 打印样式 */
+@media print {
+  #left { display:none; }
+  #right { padding: 0; overflow: visible; }
+  body { height: auto; }
+  .tip { display:none; }
+  .shot-btn { display:none; }
+}
 </style>
 </head>
 <body>
 
 <div id="left">
   <h2>对话渲染工具</h2>
-  <small>粘贴 conversations JSON，渲染为表格。<br>末轮自动蓝色高亮，也可点击任意行手动黄色高亮。<br><br>支持两种格式：<br>· {"role":"user","content":"..."}<br>· {"prompt":"...","answer":"..."}</small>
+  <small>粘贴 conversations JSON，渲染为表格。<br>末轮蓝色高亮，点击任意行可手动黄色标注。<br><br>支持两种格式：<br>· {"role":"user","content":"..."}<br>· {"prompt":"...","answer":"..."}</small>
 
   <textarea id="jsonInput" placeholder='[
   {"role":"user","content":"帮我写商业计划书"},
@@ -175,13 +184,43 @@ function doRender() {
   // 卡片
   var wrap = document.createElement('div');
   wrap.className = 'tbl-wrap';
-  wrap.id = 'tblWrap';
 
+  // 卡片头 + 截图按钮（放在头部右侧，直接在DOM里，100%会渲染）
   var head = document.createElement('div');
   head.className = 'tbl-head';
-  head.innerHTML = '<span class="tbl-head-title">对话内容</span><span class="tbl-head-meta">' + turns.length + ' 轮 &nbsp;·&nbsp; 末轮蓝色 &nbsp;·&nbsp; 点击行可黄色标注</span>';
+
+  var headTitle = document.createElement('span');
+  headTitle.className = 'tbl-head-title';
+  headTitle.textContent = '对话内容';
+
+  var headRight = document.createElement('div');
+  headRight.className = 'tbl-head-right';
+
+  var headMeta = document.createElement('span');
+  headMeta.className = 'tbl-head-meta';
+  headMeta.textContent = turns.length + ' 轮 · 末轮蓝色 · 点行可黄色标注';
+
+  var shotBtn = document.createElement('button');
+  shotBtn.className = 'shot-btn';
+  shotBtn.textContent = '📷 保存图片';
+  shotBtn.onclick = function() {
+    shotBtn.textContent = '⏳ 处理中...';
+    shotBtn.disabled = true;
+    // 使用浏览器打印，最稳定的截图方案
+    window.print();
+    setTimeout(function() {
+      shotBtn.textContent = '📷 保存图片';
+      shotBtn.disabled = false;
+    }, 1000);
+  };
+
+  headRight.appendChild(headMeta);
+  headRight.appendChild(shotBtn);
+  head.appendChild(headTitle);
+  head.appendChild(headRight);
   wrap.appendChild(head);
 
+  // 表格
   var MAX = 8;
   var showTurns, foldedCount = 0;
   if (turns.length > MAX) {
@@ -197,7 +236,6 @@ function doRender() {
   tbl.appendChild(thead);
 
   var tbody = document.createElement('tbody');
-
   for (var j = 0; j < showTurns.length; j++) {
     var t = showTurns[j];
     if (t === null) {
@@ -212,7 +250,6 @@ function doRender() {
     var tr = document.createElement('tr');
     if (isLast) tr.className = 'last-row';
 
-    // 点击切换黄色高亮
     (function(row) {
       row.addEventListener('click', function() {
         if (row.classList.contains('fold-row')) return;
@@ -225,11 +262,11 @@ function doRender() {
 
     var tdP = document.createElement('td');
     var pt = t.prompt || '';
-    tdP.textContent = pt.length > 400 ? pt.slice(0, 400) + '…' : (pt || '—');
+    tdP.textContent = pt.length > 400 ? pt.slice(0,400)+'…' : (pt||'—');
 
     var tdA = document.createElement('td');
     var at = t.answer || '';
-    tdA.textContent = at.length > 400 ? at.slice(0, 400) + '…' : (at || '—');
+    tdA.textContent = at.length > 400 ? at.slice(0,400)+'…' : (at||'—');
 
     tr.appendChild(tdNum);
     tr.appendChild(tdP);
@@ -241,95 +278,10 @@ function doRender() {
   wrap.appendChild(tbl);
   right.appendChild(wrap);
 
-  // 按钮行
-  var btnRow = document.createElement('div');
-  btnRow.className = 'btn-row';
-
-  var shotBtn = document.createElement('button');
-  shotBtn.className = 'action-btn btn-shot';
-  shotBtn.textContent = '📷 保存为图片';
-  shotBtn.onclick = function() { doScreenshot(wrap, shotBtn); };
-
-  var hint = document.createElement('span');
-  hint.className = 'action-btn btn-hint';
-  hint.textContent = '💡 点击表格行可手动黄色标注';
-
-  btnRow.appendChild(shotBtn);
-  btnRow.appendChild(hint);
-  right.appendChild(btnRow);
-}
-
-function doScreenshot(el, btn) {
-  btn.disabled = true;
-  btn.textContent = '⏳ 生成中...';
-
-  // 用 Canvas API 手动截图，不依赖外部库
-  var rect = el.getBoundingClientRect();
-  var scale = window.devicePixelRatio || 2;
-
-  // 降级：直接用 dom-to-image 方式，或用原生 API
-  // 这里用内联 SVG foreignObject 方案
-  var w = el.offsetWidth;
-  var h = el.offsetHeight;
-
-  var xml = new XMLSerializer().serializeToString(el);
-  // 转义特殊字符
-  xml = xml.replace(/&nbsp;/g, '&#160;');
-
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' +
-    '<foreignObject width="100%" height="100%">' +
-    '<div xmlns="http://www.w3.org/1999/xhtml">' + xml + '</div>' +
-    '</foreignObject></svg>';
-
-  var img = new Image();
-  var url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  img.onload = function() {
-    var canvas = document.createElement('canvas');
-    canvas.width = w * 2;
-    canvas.height = h * 2;
-    var ctx = canvas.getContext('2d');
-    ctx.scale(2, 2);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(img, 0, 0, w, h);
-
-    canvas.toBlob(function(blob) {
-      if (navigator.clipboard && window.ClipboardItem) {
-        navigator.clipboard.write([new ClipboardItem({'image/png': blob})])
-          .then(function() { showDone(btn, '✅ 已复制到剪贴板'); })
-          .catch(function() { downloadBlob(blob, btn); });
-      } else {
-        downloadBlob(blob, btn);
-      }
-    }, 'image/png');
-  };
-  img.onerror = function() {
-    // SVG 方案失败，直接下载 HTML 截图替代
-    btn.disabled = false;
-    btn.textContent = '📷 保存为图片';
-    alert('截图失败，请使用浏览器自带截图（Shift+Cmd+4）');
-  };
-  img.src = url;
-}
-
-function downloadBlob(blob, btn) {
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'dialog-' + Date.now() + '.png';
-  a.click();
-  URL.revokeObjectURL(url);
-  showDone(btn, '✅ 已下载');
-}
-
-function showDone(btn, msg) {
-  btn.textContent = msg;
-  btn.classList.add('done');
-  setTimeout(function() {
-    btn.textContent = '📷 保存为图片';
-    btn.classList.remove('done');
-    btn.disabled = false;
-  }, 2000);
+  right.appendChild(Object.assign(document.createElement('p'), {
+    className: 'tip',
+    textContent: '💡 点击「保存图片」后，在打印预览里选「另存为 PDF」或截图。点击表格行可手动黄色标注。'
+  }));
 }
 </script>
 </body>
