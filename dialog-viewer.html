@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>对话渲染工具</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, "PingFang SC", sans-serif; background: #F5F5F5; display: flex; height: 100vh; }
@@ -65,7 +66,11 @@ td:first-child { width: 36px; text-align: center; font-size: 11px; font-weight: 
 tbody tr.last-row td { color: #1a1a1a; background: #EFF6FF; }
 tbody tr.last-row td:first-child { color: #007AFF; background: #DBEAFE; }
 
-/* 折叠行 */
+/* 截图按钮 */
+.copy-btn { display:inline-flex; align-items:center; gap:5px; margin-top:12px; padding:7px 14px; background:#1a1a1a; color:#fff; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:opacity .15s; }
+.copy-btn:hover { opacity:0.8; }
+.copy-btn.done { background:#388E3C; }
+.copy-btn:disabled { opacity:0.5; cursor:not-allowed; }
 tr.fold-row td { text-align: center; color: #CCC; font-size: 11px; background: #FAFAFA; padding: 6px; }
 </style>
 </head>
@@ -105,6 +110,20 @@ tr.fold-row td { text-align: center; color: #CCC; font-size: 11px; background: #
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) doRender();
 });
+
+function downloadCanvas(canvas, btn) {
+  var link = document.createElement('a');
+  link.download = 'dialog-' + Date.now() + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  btn.innerHTML = '✅ 已下载';
+  btn.classList.add('done');
+  setTimeout(function() {
+    btn.innerHTML = '📷 复制为图片';
+    btn.classList.remove('done');
+    btn.disabled = false;
+  }, 2000);
+}
 
 function doClear() {
   document.getElementById('jsonInput').value = '';
@@ -237,6 +256,48 @@ function doRender() {
   tbl.appendChild(tbody);
   wrap.appendChild(tbl);
   right.appendChild(wrap);
+
+  // 截图按钮
+  var btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.id = 'screenshotBtn';
+  btn.innerHTML = '📷 复制为图片';
+  btn.onclick = function() {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ 生成中...';
+    html2canvas(wrap, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: false
+    }).then(function(canvas) {
+      // 尝试写入剪贴板
+      canvas.toBlob(function(blob) {
+        if (navigator.clipboard && window.ClipboardItem) {
+          navigator.clipboard.write([new ClipboardItem({'image/png': blob})])
+            .then(function() {
+              btn.innerHTML = '✅ 已复制到剪贴板';
+              btn.classList.add('done');
+              setTimeout(function() {
+                btn.innerHTML = '📷 复制为图片';
+                btn.classList.remove('done');
+                btn.disabled = false;
+              }, 2000);
+            })
+            .catch(function() {
+              // 剪贴板失败则直接下载
+              downloadCanvas(canvas, btn);
+            });
+        } else {
+          downloadCanvas(canvas, btn);
+        }
+      }, 'image/png');
+    }).catch(function(e) {
+      btn.innerHTML = '❌ 失败，请重试';
+      btn.disabled = false;
+    });
+  };
+  right.appendChild(btn);
 }
 </script>
 </body>
